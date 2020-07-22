@@ -1,0 +1,72 @@
+html, body {
+/* #  height: 80%;  */
+/*#  background-color: #ffffcc; */
+}
+
+body {
+  /* font-family: Helvetica, Arial, sans-serif; */
+/*  font-family: Helvetica, Arial, sans-serif; */
+  font-size: 20px;
+  font-size: 14px;
+  line-height: 1.8;
+  font-weight: 200;
+/*  background-color: #fdfdfd;*/
+  background-color: white;
+/*  background-color: #ffffcc;*/
+}
+
+strong {
+    color: green;
+    font-weight: bold;
+/*    text-decoration:underline; */
+}
+
+eee {
+    color: Green;
+}
+
+bold {
+    font-weight: bold;
+}
+
+rstrong {
+    color: red;
+    font-weight: bold;
+}
+
+gstrong {
+    color: green;
+    font-weight: bold;
+}
+
+bstrong {
+    color: blue;
+    font-weight: bold;
+}
+
+cstrong {
+    color: cyan;
+    font-weight: bold;
+}
+
+pstrong {
+    color: pink;
+    font-weight: bold;
+}
+
+warn {
+    color: red;
+    font-weight: bold;
+}
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  tex2jax: {
+    inlineMath: [['$','$'], ['\\(','\\)']],
+    processEscapes: true
+  }
+  TeX: { 
+    equationNumbers: { autoNumber: "AMS" } 
+  }
+});
+</script>
