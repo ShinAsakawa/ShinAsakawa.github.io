@@ -33,6 +33,7 @@
 ### その他
 
 1. [失語・失読に関する神経心理学モデルの基礎](https://github.com/ShinAsakawa/wbai_aphasia/blob/master/2019Primer_AphasiaDyslexia.pdf)
+2. [計算論的神経心理学](https://project-ccap.github.io/2020computational_neuropsychology.pdf)
 2. [AI白書 2019, 2018](https://www.ipa.go.jp/ikc/info/20181030.html)
 3. [ディープラーニング，ビッグデータ，機械学習あるいはその心理学](https://www.sh%20in-yo-sha.co.jp/book/b455586.html)
 4. [Python で体験する深層学習](http://www.coronasha.co.jp/np/isbn/9784%20339028515/)
