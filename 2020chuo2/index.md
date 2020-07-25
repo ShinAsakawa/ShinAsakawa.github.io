@@ -1,7 +1,14 @@
-# 中央大学公開研究会資料
+# 中央大学緑川研究室公開研究会
 
-- 日時: 2020 年8 月 27 日 10:30-
+### 「自然言語処理分野における最近の進歩と心理学への示唆」
+
+<div align="center">
+<img src="https://chuo-u.webex.com/cmp3300/fileDownloadServlet?filekey=QUhTSwAAAARatkd9CK41hD3MFYrcP5zcXLEKUYlYOKA5XIArwX22krfVWm-arh5pmFl_7CxoBgSc8zzbUyCK2n4Yoh3bsQo9fs-qrJlP50Xcto3VbILaJIvWjEHOAIpw3fz-zeCyWH5VPk73wjh0SsAPjvaGepEhtNS65KRnc1e_MDMXKZpJ4GuTR-7NKU6Z7UcRa-UmpRJR_EnEYx3rxKflFycEUIIYj3zGMKAvIyV7nZd9NkDgCcqZZfea5lhN9DbcGBVix_u1zPkmK_dsS4Upq0l1KN2E0WPVbk_BJ_zjakqPsCD5MJY3faVqMgLtcUjpusrQUw6aR3H3U3DA7Oa0TJuhv5ca0&siteurl=chuo-u" style="width:200px" >
+</div>
+
+- 日時: 2020 年8 月 27 日 10:00-
 - 場所: オンライン
+
 
 # 謝辞
 
@@ -33,10 +40,13 @@
 ### その他
 
 1. [失語・失読に関する神経心理学モデルの基礎](https://github.com/ShinAsakawa/wbai_aphasia/blob/master/2019Primer_AphasiaDyslexia.pdf)
-2. [計算論的神経心理学](https://project-ccap.github.io/2020computational_neuropsychology.pdf)
-2. [AI白書 2019, 2018](https://www.ipa.go.jp/ikc/info/20181030.html)
-3. [ディープラーニング，ビッグデータ，機械学習あるいはその心理学](https://www.shin-yo-sha.co.jp/book/b455586.html)
-4. [Python で体験する深層学習](http://www.coronasha.co.jp/np/isbn/9784339028515/)
-5. [深層学習教科書 ディープラーニング G検定（ジェネラリスト） 公式テキスト](https://www.shoeisha.co.jp/book/detail/22076)
+1. [計算論的神経心理学](https://project-ccap.github.io/2020computational_neuropsychology.pdf)
+1. [ICLR2020オンライン読み会](https://exawizards.connpass.com/event/176947/) 講演資料 [注意モデルの変遷と展開](https://shinasakawa.github.io/2020-0614exawizards_attention.pdf) 2020年6月14日 [エクサウィザーズ社](ttps://www.exawizards.com/) 主催
+
+#### 書籍
+1. [ディープラーニング，ビッグデータ，機械学習あるいはその心理学](https://www.shin-yo-sha.co.jp/book/b455586.html)
+1. [Python で体験する深層学習](http://www.coronasha.co.jp/np/isbn/9784339028515/)
+1. [深層学習教科書 ディープラーニング G検定（ジェネラリスト） 公式テキスト](https://www.shoeisha.co.jp/book/detail/22076)
+1. [AI白書 2019, 2018](https://www.ipa.go.jp/ikc/info/20181030.html)
 
 
