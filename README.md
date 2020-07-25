@@ -40,6 +40,7 @@ $ git branch -d ブランチ名
 
 ### 4.1 command line toolsのインストール
 
+```bash
 $ cd project-ccap.github.io.git
 $ gem install bundler
 $ bundle init
