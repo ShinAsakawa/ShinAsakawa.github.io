@@ -1,4 +1,7 @@
-# Shin Asakawa's GitHub.io page
+---
+title: Shin Asakawa's GitHub.io
+layout: default
+---
 
 1. [tSNE を用いた TLPA 200語の word2vec 視覚化](https://ShinAsakawa.github.io/2020cnps_tSNE_for_word2vec.ipynb)
 2. [2020年2月24日資料1 tlpa 画像](https://ShinAsakawa.github.io/2020making_tlpa.html)
