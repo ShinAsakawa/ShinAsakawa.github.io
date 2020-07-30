@@ -1,14 +1,21 @@
-# ShinAsakawa.github.io
+ShinAsakawa.github.io
 
-## 1. git clone で GitHub の内容を download
+# 簡単な GitHub 管理方法解説
+
+## 手順 1. `git clone` コマンドで GitHub の内容をすべてローカルディレクトリにダウンロードする
 
 ```bash
-$ git clone https://ShinAsakawa.github.io.git
-$ cd ShinAsakawa.githuh.io.git
+$ git clone https://ShinAsakawa.github.io.git [ダウンロードするディレクトリ名. 省略可]
+$ cd ShinAsakawa.githuh.io.git [または上のコマンドで指定したディレクトリ名]
 ```
-## 2. ページの更新方法
 
-### 2.1 checkout
+## 手順 2. ページの更新方法
+
+1. ローカルファイルをチェックアウト checkout して更新作業を行い，
+2. その内容を ``commit`` し
+3. サーバ (GitHub) へ ``push`` する。
+
+以下のサンプル操作を参照のこと
 
 ```bash
 $ git checkout -b 適当なブランチ名
@@ -21,16 +28,16 @@ $ git push -u origin ブランチ名
 
 ### 2.2 pull request の merge
 
-1. GitHub上で pull request を作成する
-2. mergeは管理者が行います．merge 後はローカルで以下実行
+1. GitHub 上で pull request を作成する
+2. mergeは管理者が行う。merge 後はローカルで以下を実行し ``branch`` を削除する
 
 ```bash
 $ git checkout master
 $ git pull
-$ git branch -d ブランチ名
+$ git branch -d ブランチ名  [-d オプションは delete の意]
 ```
 
-## 3. GitHub の 設定・使い方
+## 3. GitHub の 設定・使い方リンク
 
 - [Getting started with GitHub](https://help.github.com/en/github/getting-started-with-github)
 - [SSHによるGitHubへのアクセス](https://help.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh)
@@ -38,10 +45,13 @@ $ git branch -d ブランチ名
 
 ## 4. local でページの見た目確認手順
 
-### 4.1 command line toolsのインストール
+GitHub pages は ``jeykell`` での管理を前提としている場合が多い。
+``jeykell`` は静的ページの生成ツールである。日本語の文書も用意されている <http://jekyllrb-ja.github.io/> 
+
+### 4.1 ``jekyll`` 操作のための command line tools のインストール
 
 ```bash
-$ cd project-ccap.github.io.git
+$ cd ShinAsaawa.github.io.git
 $ gem install bundler
 $ bundle init
 $ vim Gemfile (他のテキストエディアでも可)
@@ -52,10 +62,14 @@ gem "github-pages", group: :jekyll_plugins
 $ bundle install
 ```
 
-以下を実行するとローカルでサーバが立ち上がるので，ブラウザでhttp://localhost:4000/ にアクセスする．
+### 4.2 ``jekyll`` の起動
+
+以下を実行するとローカルでサーバが立ち上がるので，ブラウザで http://localhost:4000/ にアクセスする。
+または ``--port`` オプションで指定したポート番号にアクセスする。
+ポート番号は設定ファイル ``_config.yml`` ファイル中に ``port:####`` のように指定することもできる。
 
 ```bash
-$ bundle exec jekyll serve
+$ bundle exec jekyll serve [--port ####]
 ```
 
 ## 5. リポジトリアクセス権限の修正
@@ -106,3 +120,4 @@ $ git merge --abort
 $ git reset --hard HEAD
 ```
 
+- 参照: https://qiita.com/wann/items/688bc17460a457104d7d
