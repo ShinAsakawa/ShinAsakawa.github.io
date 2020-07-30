@@ -74,3 +74,35 @@ git remote set-url origin https://<ユーザ名>@github.com/ShinAsakawa/ShinAsak
 
 - 参照: <https://hacknote.jp/archives/54105/>
 
+## 6. git merge, git pull 時の不整合の解消
+
+```bash
+$ git fetch
+```
+
+でエラーがあって元に戻したい時は
+ローカルの ``master``ブランチまで更新されていない（merge されていない）ので以下のコマンドを実行する
+
+```bash
+$ git reset --hard HEAD
+```
+
+これで直前の ``commit`` まで戻して、無かった事にできる。一方，
+
+```bash
+$ git pull
+```
+
+でエラーがあって元に戻したい場合，すなわちコンフリクトを無くしたいという時には
+``pull = fetch + merge`` であるから ``merge`` を以下のコマンドで取り消す。
+
+```bash
+$ git merge --abort
+
+```
+その後は上の ``fetch`` のときと同じように以下のコマンドを実行する
+
+```
+$ git reset --hard HEAD
+```
+
