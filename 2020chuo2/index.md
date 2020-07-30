@@ -1,10 +1,15 @@
-# 中央大学緑川研究室公開研究会
+---
+title: 中央大学緑川研究室公開研究会
+layout: post
+---
 
-### 「自然言語処理分野における最近の進歩と心理学への示唆」
 
 <div align="center">
-<img src="https://chuo-u.webex.com/cmp3300/fileDownloadServlet?filekey=QUhTSwAAAARatkd9CK41hD3MFYrcP5zcXLEKUYlYOKA5XIArwX22krfVWm-arh5pmFl_7CxoBgSc8zzbUyCK2n4Yoh3bsQo9fs-qrJlP50Xcto3VbILaJIvWjEHOAIpw3fz-zeCyWH5VPk73wjh0SsAPjvaGepEhtNS65KRnc1e_MDMXKZpJ4GuTR-7NKU6Z7UcRa-UmpRJR_EnEYx3rxKflFycEUIIYj3zGMKAvIyV7nZd9NkDgCcqZZfea5lhN9DbcGBVix_u1zPkmK_dsS4Upq0l1KN2E0WPVbk_BJ_zjakqPsCD5MJY3faVqMgLtcUjpusrQUw6aR3H3U3DA7Oa0TJuhv5ca0&siteurl=chuo-u" style="width:200px" >
+<img src="https://www.chuo-u.ac.jp/media/images/common/header_site_logo.png">
 </div>
+<br/>
+
+## 「自然言語処理分野における最近の進歩と心理学への示唆」
 
 - 日時: 2020 年8 月 27 日 10:00-
 - 場所: オンライン
