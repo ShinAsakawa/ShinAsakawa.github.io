@@ -4,9 +4,11 @@ layout: post
 ---
 
 
+<!--
 <div align="center">
 <img src="https://www.chuo-u.ac.jp/media/images/common/header_site_logo.png">
 </div>
+-->
 <br/>
 
 ## 「自然言語処理分野における最近の進歩と心理学への示唆」
