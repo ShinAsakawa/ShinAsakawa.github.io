@@ -39,6 +39,7 @@ layout: post
 - [リカレントニューラルネットワークによる文字ベース言語モデル Javascript](https://komazawa-deep-learning.github.io/character_demo.html){:target="_blank"}
 - [効率よく t-SNE を使う方法](https://project-ccap.github.io/misread-tsne/index.html){:target="_blank"}
 
+
 #### Colab ファイル
 
 [PyTorch Tutorials](https://github.com/pytorch/tutorials/tree/master/beginner_source/nlp) などの資料の翻訳です。
@@ -55,6 +56,24 @@ layout: post
 1. [PyTorch チュートリアルのトランスフォーマーチュートリアル <img src="/assets/colab_icon.svg">](https://colab.research.google.com/github/JPA-BERT/jpa-bert.github.io/blob/master/notebooks/2020_0726transformer_tutorial.ipynb){:target="_blank"}
 1. [PyTorch による単語言語モデル <img src="/assets/colab_icon.svg">](https://colab.research.google.com/github/JPA-BERT/jpa-bert.github.io/blob/master/notebooks/2020_0726torch_word_language_model.ipynb){:target="_blank"}
 1. [トランスフォーマー解説 <img src="/assets/colab_icon.svg">](https://colab.research.google.com/github/JPA-BERT/jpa-bert.github.io/blob/master/notebooks/2020_0722Annotated_Attention_is_All_You_Need.ipynb){:target="_blank"}
+
+---
+<br/>
+
+PyTorch の チュートリアルを翻訳しました。
+歴史的な経緯を考えれば，(1) RNN (such as SRN, LSTM, and GRU) による文，あるいは句表現, (2) Seq2Seq (a.k.a エンコーダ-デコーダ) モデルによる翻訳モデル，
+(3) Seq2Seq への注意の導入, (4) トランスフォーマー (マルチヘッド自己注意) モデル， となります。ですので，このような基本的な流れは，以下のチュートリアルを実行することで
+フォローすることができると考えられます。
+
+1. [トランスフォーマーを用いた seq2seq モデル <img src="/assets/colab_icon.svg">](https://colab.research.google.com/github/JPA-BERT/jpa-bert.github.io/blob/master/notebooks/01PyTorchTEXT_transformer_tutorial.ipynb)
+2. [ゼロからの自然言語処理 文字レベルRNN による苗字名の言語識別 <img src="/assets/colab_icon.svg">](https://colab.research.google.com/github/JPA-BERT/jpa-bert.github.io/blob/master/notebooks/02PyTorchTEXT_char_rnn_classification_tutorial.ipynb)
+3. [ゼロからの自然言語処理 文字レベルRNN による苗字名の言語生成 <img src="/assets/colab_icon.svg">](https://colab.research.google.com/github/JPA-BERT/jpa-bert.github.io/blob/master/notebooks/03PyTorchTEXT_char_rnn_generation_tutorial.ipynb)
+4. [ゼロからの NLP: 注意つきの seq2seq ネットワークによる翻訳 <img src="/assets/colab_icon.svg">](https://colab.research.google.com/github/JPA-BERT/jpa-bert.github.io/blob/master/notebooks/04PyTorchTEXT_seq2seq_translation_tutorial.ipynb)
+5. [TorchText によるテキスト分類 <img src="/assets/colab_icon.svg">](https://colab.research.google.com/github/JPA-BERT/jpa-bert.github.io/blob/master/notebooks/05PyTorchTEXT_text_sentiment_ngrams_tutorial.ipynb)
+6. [TorchText による言語翻訳 <img src="/assets/colab_icon.svg">](https://colab.research.google.com/github/JPA-BERT/jpa-bert.github.io/blob/master/notebooks/06PyTorchTEXT_torchtext_translation_tutorial.ipynb)
+
+---
+<br/>
 
 #### 2019CNPS 資料より
 
