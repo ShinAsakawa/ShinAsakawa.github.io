@@ -3,6 +3,18 @@ title: Shin Asakawa's GitHub.io
 layout: default
 ---
 
+
+---
+
+## 近藤先生とのディスカッション用メモ
+
+### 2021年02月23日分
+- [どうぶつの森モデル，動物の名前連想モデル](https://colab.research.google.com/github/ShinAsakawa/ShinAsakawa.github.io/blob/master/notebooks/2021_0223word_associtaion.ipynb)
+- [導入講義用 CCP ウィルス感染者予測モデルを題材に](https://colab.research.google.com/github/ShinAsakawa/ShinAsakawa.github.io/blob/master/notebooks/2021Kermack_McKendrick_model.ipynb)
+
+
+---
+<br/>
 1. [tSNE を用いた TLPA 200語の word2vec 視覚化](https://ShinAsakawa.github.io/2020cnps_tSNE_for_word2vec.ipynb)
 2. [2020年2月24日資料1 tlpa 画像](https://ShinAsakawa.github.io/2020making_tlpa.html)
 3. [2020年4月15日かじゅまるつがる松本先生のモデルの説明](https://shinasakawa.github.io/2020gajumarutugaru/2020-0415Friston_in_detail.html)
