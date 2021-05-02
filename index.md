@@ -3,13 +3,16 @@ title: Shin Asakawa's GitHub.io
 layout: default
 ---
 
-## 「みんなの日本語関係」
-
+## 2021_0502「みんなの日本語関係」関係資料
 
 - [みんなの日本語データ作成](https://colab.research.google.com/github/ShinAsakawa/ShinAsakawa.github.io/blob/master/notebooks/2021_0502Minnichi_data.ipynb){:target="_blank"}
 - [みんなの日本語 RNN 単語版](https://colab.research.google.com/github/ShinAsakawa/ShinAsakawa.github.io/blob/master/notebooks/2021_0502Minnichi_RNN.ipynb){:target="_blank"}
 - [リカレントニューラルネットワークによる文処理デモ](minnichi_char_rnn.html)
 
+<center>
+<img src="https://raw.githubusercontent.com/ShinAsakawa/ShinAsakawa.github.io/master/assets/2002Dijkstra_fig1ja.svg" width="39%"><br/>
+Dijkstra and Van Heuven (2002) Fig. 1 を改変
+</center>
 
 
 ## 近藤先生とのディスカッション用メモ
