@@ -3,8 +3,14 @@ title: Shin Asakawa's GitHub.io
 layout: default
 ---
 
+## 「みんなの日本語関係」
 
----
+
+- [みんなの日本語データ作成](https://colab.research.google.com/github/ShinAsakawa/ShinAsakawa.github.io/blob/master/notebooks/2021_0502Minnichi_data.ipynb){:target="_blank"}
+- [みんなの日本語 RNN 単語版](https://colab.research.google.com/github/ShinAsakawa/ShinAsakawa.github.io/blob/master/notebooks/2021_0502Minnichi_RNN.ipynb){:target="_blank"}
+- [リカレントニューラルネットワークによる文処理デモ](minnichi_char_rnn.html)
+
+
 
 ## 近藤先生とのディスカッション用メモ
 

@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="author" content="Shin Asakawa">
+  <title>リカレント文章記憶デモ</title>
+
+<style>
+body {
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  color: #333;
+  padding: 20px;
+}
+#argmax {
+  background-color: #DFD;
+}
+#ppl {
+  color: #090;
+  font-size: 20px;
+}
+#epoch {
+  color: #900;
+  font-size: 20px;
+}
+.apred {
+  padding: 2px;
+  margin: 5px;
+  overflow: hidden;
+  height: 20px;
+  font-size: 14px;
+}
+#prepro_status {
+  background-color: #FFD;
+  padding: 5px;
+}
+#status {
+  padding: 2px;
+  margin-top: 5px;
+}
+#controls {
+  margin: 5px;
+}
+.theslider {
+  width:90%;
+  display: inline-block;
+}
+.slider_value {
+  width: 9%;
+  display: inline-block;
+}
+#wrap {
+  width: 800px;
+  margin-right: auto;
+  margin-left: auto;
+  margin-bottom: 200px;
+}
+.abutton {
+  width: 120px;
+  height: 60px;
+  margin: 10px 10px 10px 0px;
+}
+.hh {
+  background-color: #EEE;
+  padding: 5px;
+  margin-top: 5px;
+  border-bottom: 1px solid #999;
+  margin-bottom: 2px;
+}
+#pplgraph {
+  float: right;
+}
+#intro {
+  text-align: justify;
+}
+</style>
+<link href="external/jquery-ui.min.css" rel="stylesheet">
+
+<script src="external/jquery-1.8.3.min.js"></script>
+<script src="external/jquery-ui.min.js"></script>
+
+<script src="src/recurrent.js"></script>
+<script src="src/vis.js"></script>
+
+<script type="text/javascript">
+
+// prediction params
+var sample_softmax_temperature = 1.0; // how peaky model predictions should be
+var max_chars_gen = 100; // max length of generated sentences
+
+// various global var inits
+var epoch_size = -1;
+var input_size = -1;
+var output_size = -1;
+var letterToIndex = {};
+var indexToLetter = {};
+var vocab = [];
+var data_sents = [];
+var solver = new R.Solver(); // should be class because it needs memory for step caches
+var pplGraph = new Rvis.Graph();
+
+var model = {};
+
+var initVocab = function(sents, count_threshold) {
+  // go over all characters and keep track of all unique ones seen
+  var txt = sents.join(''); // concat all
+
+  // count up all characters
+  var d = {};
+  for(var i=0,n=txt.length;i<n;i++) {
+    var txti = txt[i];
+    if(txti in d) { d[txti] += 1; } 
+    else { d[txti] = 1; }
+  }
+
+  // filter by count threshold and create pointers
+  letterToIndex = {};
+  indexToLetter = {};
+  vocab = [];
+  // NOTE: start at one because we will have START and END tokens!
+  // that is, START token will be index 0 in model letter vectors
+  // and END token will be index 0 in the next character softmax
+  var q = 1; 
+  for(ch in d) {
+    if(d.hasOwnProperty(ch)) {
+      if(d[ch] >= count_threshold) {
+        // add character to vocab
+        letterToIndex[ch] = q;
+        indexToLetter[q] = ch;
+        vocab.push(ch);
+        q++;
+      }
+    }
+  }
+
+  // globals written: indexToLetter, letterToIndex, vocab (list), and:
+  input_size = vocab.length + 1;
+  output_size = vocab.length + 1;
+  epoch_size = sents.length;
+  $("#prepro_status").text('found ' + vocab.length + ' distinct characters: ' + vocab.join(''));
+}
+
+var utilAddToModel = function(modelto, modelfrom) {
+  for(var k in modelfrom) {
+    if(modelfrom.hasOwnProperty(k)) {
+      // copy over the pointer but change the key to use the append
+      modelto[k] = modelfrom[k];
+    }
+  }
+}
+
+var initModel = function() {
+  // letter embedding vectors
+  var model = {};
+  model['Wil'] = new R.RandMat(input_size, letter_size , 0, 0.08);
+  
+  if(generator === 'rnn') {
+    var rnn = R.initRNN(letter_size, hidden_sizes, output_size);
+    utilAddToModel(model, rnn);
+  } else {
+    var lstm = R.initLSTM(letter_size, hidden_sizes, output_size);
+    utilAddToModel(model, lstm);
+  }
+
+  return model;
+}
+
+var reinit_learning_rate_slider = function() {
+  // init learning rate slider for controlling the decay
+  // note that learning_rate is a global variable
+  $("#lr_slider").slider({
+    min: Math.log10(0.01) - 3.0,
+    max: Math.log10(0.01) + 0.05,
+    step: 0.05,
+    value: Math.log10(learning_rate),
+    slide: function( event, ui ) {
+      learning_rate = Math.pow(10, ui.value);
+      $("#lr_text").text(learning_rate.toFixed(5));
+    }
+  });
+  $("#lr_text").text(learning_rate.toFixed(5));
+}
+
+var reinit = function() {
+  // note: reinit writes global vars
+  
+  // eval options to set some globals
+  eval($("#newnet").val());
+
+  reinit_learning_rate_slider();
+
+  solver = new R.Solver(); // reinit solver
+  pplGraph = new Rvis.Graph();
+
+  ppl_list = [];
+  tick_iter = 0;
+
+  // process the input, filter out blanks
+  var data_sents_raw = $('#ti').val().split('\n');
+  data_sents = [];
+  for(var i=0;i<data_sents_raw.length;i++) {
+    var sent = data_sents_raw[i].trim();
+    if(sent.length > 0) {
+      data_sents.push(sent);
+    }
+  }
+
+  initVocab(data_sents, 1); // takes count threshold for characters
+  model = initModel();
+}
+
+var saveModel = function() {
+  var out = {};
+  out['hidden_sizes'] = hidden_sizes;
+  out['generator'] = generator;
+  out['letter_size'] = letter_size;
+  var model_out = {};
+  for(var k in model) {
+    if(model.hasOwnProperty(k)) {
+      model_out[k] = model[k].toJSON();
+    }
+  }
+  out['model'] = model_out;
+  var solver_out = {};
+  solver_out['decay_rate'] = solver.decay_rate;
+  solver_out['smooth_eps'] = solver.smooth_eps;
+  step_cache_out = {};
+  for(var k in solver.step_cache) {
+    if(solver.step_cache.hasOwnProperty(k)) {
+      step_cache_out[k] = solver.step_cache[k].toJSON();
+    }
+  }
+  solver_out['step_cache'] = step_cache_out;
+  out['solver'] = solver_out;
+  out['letterToIndex'] = letterToIndex;
+  out['indexToLetter'] = indexToLetter;
+  out['vocab'] = vocab;
+  $("#tio").val(JSON.stringify(out));
+}
+
+var loadModel = function(j) {
+  hidden_sizes = j.hidden_sizes;
+  generator = j.generator;
+  letter_size = j.letter_size;
+  model = {};
+  for(var k in j.model) {
+    if(j.model.hasOwnProperty(k)) {
+      var matjson = j.model[k];
+      model[k] = new R.Mat(1,1);
+      model[k].fromJSON(matjson);
+    }
+  }
+  solver = new R.Solver(); // have to reinit the solver since model changed
+  solver.decay_rate = j.solver.decay_rate;
+  solver.smooth_eps = j.solver.smooth_eps;
+  solver.step_cache = {};
+  for(var k in j.solver.step_cache){
+      if(j.solver.step_cache.hasOwnProperty(k)){
+          var matjson = j.solver.step_cache[k];
+          solver.step_cache[k] = new R.Mat(1,1);
+          solver.step_cache[k].fromJSON(matjson);
+      }
+  }
+  letterToIndex = j['letterToIndex'];
+  indexToLetter = j['indexToLetter'];
+  vocab = j['vocab'];
+
+  // reinit these
+  ppl_list = [];
+  tick_iter = 0;
+}
+
+var forwardIndex = function(G, model, ix, prev) {
+  var x = G.rowPluck(model['Wil'], ix);
+  // forward prop the sequence learner
+  if(generator === 'rnn') {
+    var out_struct = R.forwardRNN(G, model, hidden_sizes, x, prev);
+  } else {
+    var out_struct = R.forwardLSTM(G, model, hidden_sizes, x, prev);
+  }
+  return out_struct;
+}
+
+var predictSentence = function(model, samplei, temperature) {
+  if(typeof samplei === 'undefined') { samplei = false; }
+  if(typeof temperature === 'undefined') { temperature = 1.0; }
+
+  var G = new R.Graph(false);
+  var s = '';
+  var prev = {};
+  while(true) {
+
+    // RNN tick
+    var ix = s.length === 0 ? 0 : letterToIndex[s[s.length-1]];
+    var lh = forwardIndex(G, model, ix, prev);
+    prev = lh;
+
+    // sample predicted letter
+    logprobs = lh.o;
+    if(temperature !== 1.0 && samplei) {
+      // scale log probabilities by temperature and renormalize
+      // if temperature is high, logprobs will go towards zero
+      // and the softmax outputs will be more diffuse. if temperature is
+      // very low, the softmax outputs will be more peaky
+      for(var q=0,nq=logprobs.w.length;q<nq;q++) {
+        logprobs.w[q] /= temperature;
+      }
+    }
+
+    probs = R.softmax(logprobs);
+    if(samplei) {
+      var ix = R.samplei(probs.w);
+    } else {
+      var ix = R.maxi(probs.w);  
+    }
+    
+    if(ix === 0) break; // END token predicted, break out
+    if(s.length > max_chars_gen) { break; } // something is wrong
+
+    var letter = indexToLetter[ix];
+    s += letter;
+  }
+  return s;
+}
+
+var costfun = function(model, sent) {
+  // takes a model and a sentence and
+  // calculates the loss. Also returns the Graph
+  // object which can be used to do backprop
+  var n = sent.length;
+  var G = new R.Graph();
+  var log2ppl = 0.0;
+  var cost = 0.0;
+  var prev = {};
+  for(var i=-1;i<n;i++) {
+    // start and end tokens are zeros
+    var ix_source = i === -1 ? 0 : letterToIndex[sent[i]]; // first step: start with START token
+    var ix_target = i === n-1 ? 0 : letterToIndex[sent[i+1]]; // last step: end with END token
+
+    lh = forwardIndex(G, model, ix_source, prev);
+    prev = lh;
+
+    // set gradients into logprobabilities
+    logprobs = lh.o; // interpret output as logprobs
+    probs = R.softmax(logprobs); // compute the softmax probabilities
+
+    log2ppl += -Math.log2(probs.w[ix_target]); // accumulate base 2 log prob and do smoothing
+    cost += -Math.log(probs.w[ix_target]);
+
+    // write gradients into log probabilities
+    logprobs.dw = probs.w;
+    logprobs.dw[ix_target] -= 1
+  }
+  var ppl = Math.pow(2, log2ppl / (n - 1));
+  return {'G':G, 'ppl':ppl, 'cost':cost};
+}
+
+function median(values) {
+  values.sort( function(a,b) {return a - b;} );
+  var half = Math.floor(values.length/2);
+  if(values.length % 2) return values[half];
+  else return (values[half-1] + values[half]) / 2.0;
+}
+
+var ppl_list = [];
+var tick_iter = 0;
+var tick = function() {
+
+  // sample sentence fromd data
+  var sentix = R.randi(0,data_sents.length);
+  var sent = data_sents[sentix];
+
+  var t0 = +new Date();  // log start timestamp
+
+  // evaluate cost function on a sentence
+  var cost_struct = costfun(model, sent);
+  
+  // use built up graph to compute backprop (set .dw fields in mats)
+  cost_struct.G.backward();
+  // perform param update
+  var solver_stats = solver.step(model, learning_rate, regc, clipval);
+  //$("#gradclip").text('grad clipped ratio: ' + solver_stats.ratio_clipped)
+
+  var t1 = +new Date();
+  var tick_time = t1 - t0;
+
+  ppl_list.push(cost_struct.ppl); // keep track of perplexity
+
+  // evaluate now and then
+  tick_iter += 1;
+  if(tick_iter % 50 === 0) {
+    // draw samples
+    $('#samples').html('');
+    for(var q=0;q<5;q++) {
+      var pred = predictSentence(model, true, sample_softmax_temperature);
+      var pred_div = '<div class="apred">'+pred+'</div>'
+      $('#samples').append(pred_div);
+    }
+  }
+  if(tick_iter % 10 === 0) {
+    // draw argmax prediction
+    $('#argmax').html('');
+    var pred = predictSentence(model, false);
+    var pred_div = '<div class="apred">'+pred+'</div>'
+    $('#argmax').append(pred_div);
+
+    // keep track of perplexity
+    $('#epoch').text('epoch: ' + (tick_iter/epoch_size).toFixed(2));
+    $('#ppl').text('perplexity: ' + cost_struct.ppl.toFixed(2));
+    $('#ticktime').text('forw/bwd time per example: ' + tick_time.toFixed(1) + 'ms');
+
+    if(tick_iter % 100 === 0) {
+      var median_ppl = median(ppl_list);
+      ppl_list = [];
+      pplGraph.add(tick_iter, median_ppl);
+      pplGraph.drawSelf(document.getElementById("pplgraph"));
+    }
+  }
+}
+
+var gradCheck = function() {
+  var model = initModel();
+  var sent = '^test sentence$';
+  var cost_struct = costfun(model, sent);
+  cost_struct.G.backward();
+  var eps = 0.000001;
+
+  for(var k in model) {
+    if(model.hasOwnProperty(k)) {
+      var m = model[k]; // mat ref
+      for(var i=0,n=m.w.length;i<n;i++) {
+        
+        oldval = m.w[i];
+        m.w[i] = oldval + eps;
+        var c0 = costfun(model, sent);
+        m.w[i] = oldval - eps;
+        var c1 = costfun(model, sent);
+        m.w[i] = oldval;
+
+        var gnum = (c0.cost - c1.cost)/(2 * eps);
+        var ganal = m.dw[i];
+        var relerr = (gnum - ganal)/(Math.abs(gnum) + Math.abs(ganal));
+        if(relerr > 1e-1) {
+          console.log(k + ': numeric: ' + gnum + ', analytic: ' + ganal + ', err: ' + relerr);
+        }
+      }
+    }
+  }
+}
+
+var iid = null;
+$(function() {
+
+  // attach button handlers
+  $('#learn').click(function(){ 
+    reinit();
+    if(iid !== null) { clearInterval(iid); }
+    iid = setInterval(tick, 0); 
+  });
+  $('#stop').click(function(){ 
+    if(iid !== null) { clearInterval(iid); }
+    iid = null;
+  });
+  $("#resume").click(function(){
+    if(iid === null) {
+      iid = setInterval(tick, 0); 
+    }
+  });
+
+  $("#savemodel").click(saveModel);
+  $("#loadmodel").click(function(){
+    var j = JSON.parse($("#tio").val());
+    loadModel(j);
+  });
+
+  $("#loadpretrained").click(function(){
+    $.getJSON("lstm_100_model.json", function(data) {
+      pplGraph = new Rvis.Graph();
+      learning_rate = 0.0001;
+      reinit_learning_rate_slider();
+      loadModel(data);
+    });
+  });
+
+  $("#learn").click(); // simulate click on startup
+
+  //$('#gradcheck').click(gradCheck);
+
+  $("#temperature_slider").slider({
+    min: -1,
+    max: 1.05,
+    step: 0.05,
+    value: 0,
+    slide: function( event, ui ) {
+      sample_softmax_temperature = Math.pow(10, ui.value);
+      $("#temperature_text").text( sample_softmax_temperature.toFixed(2) );
+    }
+  });
+});
+
+</script>
+</head>
+
+<body>
+
+<div id="wrap">
+  <h1>リカレントニューラルネットワークによる「みんなの日本語」文字ベースモデル デモ</h1>
+  <div id="intro">
+    このデモでは <a href="https://github.com/karpathy/recurrentjs">recurrentjsライブラリ</a> を使用して Javascript で深層リカレントニューラルネットワーク (RNN) や  LSTM  ネットワーク を 学習することができます。
+    このデモでは 一般的な 自動誤差逆伝播がサポートされているので，任意の式グラフを設定することができます。
+<!--     This demo shows usage of the <a href="https://github.com/karpathy/recurrentjs">recurrentjs library</a> that allows you to train deep Recurrent Neural Networks (RNN) and Long Short-Term Memory Networks (LSTM) in Javascript. But the core of the library is more general and allows you to set up arbitrary expression graphs that support fully automatic backpropagation. --><br><br>
+
+    <!-- In this demo we take a dataset of sentences as input and learn to memorize the sentences character by character. That is, the RNN/LSTM takes a character, its context from previous time steps (as mediated by the hidden layers) and predicts the next character in the sequence. Here is an example:  -->
+    このデモでは 入力として 文章データを扱い 文字ごと に 文章を記憶することを学習します。
+    すなわち RNN や LSTM は 入力文字と それまでの時間ステップ からの 文脈 (隠れ層が扱う) を取り 系列内 の次の文字を予測します。ここでは一例を紹介します。<br><br>
+
+    <div style="text-align:center;"><img src="assets/eg.png"></div>
+
+    <!-- In the example image above that depicts a deep RNN, every character has an associated "letter vector" that we will train with backpropagation. These letter vectors are combined through a (learnable) Matrix-vector multiply transformation into the first hidden layer representation (yellow), then into second hidden layer representation (purple), and finally into the output space (blue). The output space has dimensionality equal to the number of characters in the dataset and every dimension provides the probability of the next character in the sequence. The network is therefore trained to always predict the next character (using Softmax + cross-entropy loss on all letters). The quantity we track during training is called the <b>perplexity</b>, which measures how surprised the network is to see the next character in a sequence. For example, if perplexity is 4.0 then it's as if the network was guessing uniformly at random from 4 possible characters for next letter (i.e. lowest it can be is 1). At test time, the prediction is currently done iteratively character by character in a greedy fashion, but I might eventually implemented more sophisticated methods (e.g. beam search). -->
+    上の例では 深層 RNN が描かれています。すべての文字にはバックプロパゲーションで学習可能な 「文字ベクトル」 が関連付けられています。
+    この文字ベクトルは (学習可能な) 行列 と ベクトル との 乗算によって 第1 隠れ層表現 (黄色) に結合されます。
+    次に 第 2 隠れ層表現 (紫色) に結合されます。
+    最後に出力空間 (青) に結合されます。
+    出力空間は データ内の 文字数 に 等しい次元数を持ちます。
+    各次元は系列内の 次の 文字の確率を与えます。
+    すなわち このネットワーク は 常に次の文字を予測するように訓練されます。
+    実際には ソフトマックス関数と，損失関数として交差エントロピー損失を使用しています。
+    学習中に追跡する指標は <b>パープレクシティ perplexity</b> と呼ばれます。
+    ネットワークがシーケンスの次の文字を見て，どれだけ予測と異なっていて，驚くのかを表します。
+    例えば、パープレクシティ (錯乱度) が 4.0 であれば ネットワーク が 次の文字候補として 4 つの文字 を予測していることを示しています。
+    パープレクシティの最小値，すなわち最良の場合は 1 となります。
+    検証テスト時には 貪欲な探索方法 で 文字ごとに反復的に予測を行っています。
+    将来的にはより洗練された方法 (例えばビームサーチ) を実装するかもしれません。<br><br>
+
+    <!-- The demo is pre-filled with sentences from <a href="http://www.paulgraham.com/articles.html">Paul Graham's essays</a>, in an attempt to encode Paul Graham's knowledge into the weights of the Recurrent Networks. The long-term goal of the project then is to generate startup wisdom at will. Feel free to train on whatever data you wish, and to experiment with the parameters. If you want more impressive models you have to increase the sizes of hidden layers, and maybe slightly the letter vectors. However, this will take longer to train. -->
+下では「みんなの日本語」全テキストをつかったデモになっています<br/><br/>
+<!--    下のデモで使用しているデータは <a href="https://www.aozora.gr.jp/cards/000148/files/773_14560.html">青空文庫</a> から夏目漱石の 「こころ」 の冒頭部分をコピーしています。
+    好きなデータを使って自由にトレーニングしてください。またパラメータを調整して実験を繰り返してください。
+    効率的なモデルにするには 隠れ層 の サイズを大きくするなどしてください。 文字埋め込み層の ベクトル の次元を少し大きくすると改善します。ですがネットワークのサイズを大きくする学習には時間がかかります。<br><br>
+-->
+<!--     For suggestions/bugs ping me at <a href="https://twitter.com/karpathy">@karpathy</a>.<br><br> -->
+
+  </div>
+  <div>
+    <div class="hh">入力文:</div>
+    <textarea style="width:100%; height:200px;" id="ti">
+ジュースをお願いします。
+いらっしゃいませ。メニューです。どうぞ。
+いくらですか。
+1.ホン:カレーとコーヒーをください。
+2.ジル:サンドイッチとジュースをお願いします。
+3.マーク:スパゲッティとサラダとビールをください。
+宇宙ステーションの生活はどうですか
+宇宙ステーションはどこにあるんですか。
+地球から400キロ上を飛んでいます。
+えっ？ステーションが飛んでいるんですか。
+はい。90分で1回地球を回っています。1日に16回朝と夜が来るんですよ。
+じゃ、寝る時間や起きる時間がどうやってわかるんですか。
+グリニッジ標準時を使っています。
+どうして宇宙ステーションの中ではいつも「泳いで」いるんですか。
+宇宙は重力がありませんから、歩くことができないんです。
+いつも宇宙服を着ているんですか。
+いいえ。宇宙服はステーションの外に出て仕事をするとき、着ます。ステーションの中では普通の服を着ています。
+服は洗濯するんですか。
+いいえ。宇宙では水が大切ですから、洗濯しません。4、5日着て、捨てます。
+水も地球から運んでくるんですか。
+はい。でも、水は重いですから、たくさん運ぶことができません。ですから、私たちのおしっこから水を作っています。飲むこともできるんですよ。
+リサイクルですね。じゃ、おふろは？
+ありません。もちろんシャワーもありません。代わりに体をふきます。
+雑誌で読んだんですが、宇宙で生活すると、背が高くなるんですか。
+ええ、宇宙では、1〜7センチ高くなります。しかし、地球へ帰ったら、前と同じになります。
+10年宇宙にいたら、どうなるんですか。
+まだ、わかりません。今、研究しています。
+こうべまでいくらですか
+JRのおおさか駅です。
+1.すみません、きょうとまでいくらですか。
+（）円ですよ。
+2.ならへ行きます。いくらですか。
+（）円です。
+3.あかしまで300円ですか。
+いいえ、あかしは（）円ですよ。
+お花見
+お花見をしましょう
+奈良の吉野山へ行きませんか。
+吉野山でお花見をします。
+電車とロープウエーで行きます。
+吉野山で昼ごはんを食べます。
+桜の写真を撮りましょう、
+皆さん、いっしょに行きましょう。
+いつ:4月18日（土曜日）
+どこで:あべの橋駅で午前7時30分に会います
+いくら:2,550円（電車、ロープウエー）
+持ち物:お弁当、飲み物
+申し込み:田中（Tel.194-0873）
+かさマーク:行きません
+1.アンさんは「お花見をしましょう」を読みました。
+メルさんに会いました。
+アン:4月18日に（例:吉野山）へ行きませんか。
+メル:何曜日ですか。
+アン:（）です。
+メル:何をしますか。
+アン:（）をします。
+メル:いいですね。何時に行きますか。
+アン:（）にあべの橋駅で会いましょう。
+電車とロープウエーで行きます。
+メル:いくらですか。
+アン:（）です。
+お弁当と（）を持って行きます。
+メル:わかりました。じゃ、18日に会いましょう。
+日本でいちばん
+時計なかったら、不便ですが、たくさんあっても、大変です。
+広島県福山市の赤繁さんのうちには時間を音で知らせる時計が560あります。壁に掛ける時計が310、置き時計が210、その他の時計が40です。日本でいちばん時計の音がうるさいうちです。560の時計が決まった時間になると、鳴るのです。
+ほとんど古い時計で、そのままにしておくと、止まってしまいます。毎日ねじを巻かなければなりません。赤繁さんは1日中時計のねじを巻いていますから、右手がいつも痛いと言っています。もし一度に560の時計が全部鳴ったら、耳も痛くなってしまいますね。でも、みんな古い時計ですから、少しずつ違う時間になります。ですから、赤繁さんの耳は痛くならないのです。
+赤繁さんにちょっと聞きました。
+どうしてそんなにたくさん時計を集めているんですか。
+30年まえに骨董屋で見つけた時計を修理したから、時計が好きになりました。壊れた時計を直すと、動きますよね。それが楽しいんです。今も古い時計を見ると、買ってしまいます。もう離れの4つの部屋がいっぱいで、押し入れにも積んであります。
+夜はよく寝られますか。時計」の音がうるさくないですか。
+好きな時計の音ですから、すぐ慣れましたよ。音楽と同じです。
+将来、時計の博物館を作りたいと思っていますか。
+ええ。でも、今はお金がありませんから…。しばらくこのままにしておきます。
+お国はどちらですか
+どこから来ましたか。
+失礼ですが、お名前は？
+モームです。
+お国はどちらですか。
+イギリスです。ロンドンから来ました。
+1.初めまして。ワシントンです。アメリカから来ました。
+うちはニューヨークです。どうぞよろしく。
+2.皆さん、こちらはナセルさんです。
+ナセルです。エジプトのカイロから来ました。
+よろしくお願いします。
+3.ホーさんは中国の方ですか。
+いいえ、ベトナムのハノイから来ました。
+いつ行きますか
+ケンさんはいつ歯医者へ行きますか。
+何時の飛行機で？
+田中さんは月曜日の朝福岡から東京の本社へ行きます。本社の会議は10時から5時までです。本社から空港までJRで30分です。夜福岡へ帰ります。
+1.何時の飛行機で行きますか。
+2.何時の飛行機で帰りますか。
+忍者
+忍者は昔のスパイだ。忍者は厳しい訓練をしたから、いろいろなことができた。スポーツの選手と同じだ。とても速く歩いたり、走ったりすることができた。高い壁を登ることや長い時間水の中にいることもできた。目や耳がよかったから、遠い所がよく見えた。小さい音でもよく聞こえた。
+映画やマンガでは時々おもしろいまちがいがある。映画やマンガの忍者は水の上を歩いたり、空を飛んだりしている。でも、実際は無理だ。忍者はとても速く動いたり、いろいろな道具を使ったりした。それで、普通の人ができないことができたのだ。
+滋賀県や三重県には昔、忍者が住んでいたうちがある。うちの中にはいろいろおもしろい物がある。部屋の壁の前に立つと、壁が回転して、人が消える。小さい秘密の部屋から隣や下の部屋の中が見られる。忍者が使ったいろいろな道具もある。
+でも、今、忍者には会えない。残念だ。
+もらいました・あげました
+わたしは去年ペルーから日本へ来ました。ワットさんにテレビをもらいました。松本さんに机をもらいました。山田さんコートをもらいました。会社の人に自転車を借りましたわたしは皆さんにペルーのお土産をあげました。
+わたしは来週国へ帰ります。きょう会社の人に自転車を返しました。友達にテレビと机をあげました。でも、コートをあげませんでした。わたしの身長は165センチです。友達の身長は2メートルです。
+昼ごはんはどこで？何を？
+昼ごはんについていろいろな人に聞きました。
+《中村正さん会社員》
+たいてい社員食堂で食べています。安いし、それにメニューを見ると、料理のカロリーがわかるんです。実は去年こちらに転勤して、今、一人で住んでいますから、晩ごはんはほとんど外食なんです。昼ごはんは社員食堂で、栄養やカロリーを考えて、体にいい物を選んで食べています。
+《岡本洋子さん主婦》
+昼ごはんはたいてい一人でテレビを見ながら食べています。きょうはきのうの晩ごはんのすき焼きがありましたから、それを食べました。
+今、1週間に1回、ダンス教室に通っています。その日は友達と教室の近くのレストランで食べます。わたしはいつも1,500円の日替わりランチです。ちょっと高いけど、おいしいし、静かだし、サービスもいいし……。みんなでおしゃべりしながら食べます。
+《チャンさん日本語学校の学生》
+いつも学校の近くの弁当屋で弁当を買っています。メニューも多いし、あまり高くないし、それにおかずもごはんも温かいですから。味もまままです。日本の食べ物はちょっと甘いですが、もう慣れました。教室で友達と食べます。
+《山本元太君小学1年生》
+教室で給食を食べます。みんないっしょに大きい声で「いただきます」と言ってから、食べます。先生はいつも「よくかみましょう。嫌いな物も食べましょう」と言います。でも、僕は嫌いなおかずは友達にあげます。給食で、カレーがいちばん好きです。
+町の生活・田舎の生活
+山川さん、お元気ですか。
+もう12月です。寒いですね。町は今とてもにぎやかです。そして、きれいです。仕事は忙しいですが、おもしろいです。
+お正月にわたしのうちへ来ませんか。いっしょに楽しいお正月のパーティーをしましょう。
+12月3日町田太郎
+町田さん、先週はどうもありがとうございました。
+町の生活はおもしろいですね、そして、便利です。でも、とても忙しいです、食べ物も高いです。町の生活は大変ですね。
+田舎の生活はあまり便利じゃありませんが、静かです。山はとてもきれいです。
+今度はわたしのうちへ来ませんか。ここの野菜はおいしいですよ。いっしょにごはんを食べましょう。
+1月7日山川健
+わたしの失敗
+わたしは先週友達のうちへ遊びに行きました。大阪駅で来た電車にすぐ乗りました。友達はうちの近くの駅で待っていると言いました。絵fも、わたしが乗った電車はその駅を通り過ぎてしまいました。それは特急電車でした。京都までどこにも止まりませんでした。わたしはもう一度大阪へ行く電車に乗りました。友達は駅で2時間待っていてくれました。うれしかったです。
+先週日本人のうちにホームステイしました。晩ごはんのあとで、お母さんが「おふろ、どうぞ」と言ってくれました。日本のおふろは初めでした。バスタブは大きくて、お湯がたくさん入っていました。お湯は少し熱かったです。
+お湯の中でゆっくり体を洗いました。そして汚れたお湯を全部捨てました。次にお父さんがふろ場へ行きました。「あれ？お湯が入っていない。」お父さんはびっくりしました。日本のおふろは、バスタブの外で体を洗ってから、中に入るんですね。知りませんでした。
+わたしは水曜日の夜、日本人の友達のうちで、スペイン語を教えています。先週友達が「来月スペインへ旅行に行きますから、もっと勉強したいです」と言いました。わたしは「じゃ、土曜日も来ましょうか」と聞きました。彼は「土曜日はいいです」と言いました。
+土曜日に友達のうちへ行きました。家の電気は消えていました。ベルを押しましたが、返事がありませんでした。
+日曜日、彼に電話しました。「きのう、あなたのうちへ行きましたよ。」「「土曜日はいいです」と言ったでしょう？」「……。」
+美術館
+きのう友達と「みんなの美術館」へ行きました。おもしろい絵がたくさんありました。
+1.窓の近くに男BI人と女の人がいます。女の人のうしろに地図があります。ヨーロッパの地図です。
+2.絵の真ん中に町があります。町の左に男の人が、右に女の人がいます。町の右の上に木があります。木の中に男の人と女の人がいます。
+この女の人は男の人の奥さんです。
+3.テーブルの上に果物やナイフグラスがあります。
+でも、ワインがありません。
+4.ピアノの上に花があります。ピアノの前に女の人がいます。女の人のそばに猫がいます。猫は目がありますが、女の人には目がありません。
+5.高い山があります。山の上に白い雲があります。山と山の間に川があります。川の近くに桜の木がたくさんあります。
+伝言メモ
+1)お帰りなさい。冷蔵庫にケーキとジュースが入れてあります。食べたら、お皿とコップは洗っておいてね。5時ごろ帰ります。
+2)大阪支店の佐藤さんから電話がありました。出張の予定を知らせておきました。会議の資料はメールで送っておきました。では、お先に失礼します。
+3)きのうはほんとうにゴメン。僕が悪かった。今晩は早く帰る。
+4)掃除しました。机の上はそのままにしてあります。今晩の食事はカレーです。サラダは冷蔵庫に入れてあります。それから3時ごろ荷物が届きました。台所に置いてあります。あさっての午後また伺います。
+5)絶対にビデオに触らないで。今晩8時からサッカーの試合が予約してあるから。それから今晩は彼女と食事するから、晩ごはんは要らないよ。
+お祭り
+先週佐藤さんのうちで1週間ホームステイをしました。佐藤さんの家族は4人です。お父さんとお母さんと8歳の健太ちゃんと5歳のみきちゃんです。
+佐藤さんのうちの近くに大きな神社があります。神社の夏のお祭りはとても有名です。わたしは佐藤さんの家族といっしょに行きました。
+神社にいろいろなゲームの店や食べ物の店がありました。健太ちゃんはゲームを3回しました。そして、おもちゃの車を2台もらいました。わたしはお祭りのTシャツを買いました。それからたこ焼きを食べました。健太ちゃんは6つ、みきちゃんは4つ、わたしは8つ食べました。お父さんはお好み焼きを2枚食べました。
+それからおみこしを見ました。お祭りの踊りも見ました。舞台の上にきれいな女の人が1人とかわいい女の子が4人いました。わたしは、写真をたくさん撮りました。
+日本のお祭りはおもしろいです。そして、楽しいです。
+1月1日
+きょうは1月1日です。わたしの家族はみんな毎年1月1日に新年の決意を発表します。
+父・虎男（49歳）:太ると、困るから食事に気をつけて、運動します。去年はジョギングを始めましたが、続けられませんでした。ことしは50歳になるし、会社で部長になったし、体に気をつけようと思っています。お酒もできるだけ飲まないつもりです。
+母・伸子（43歳）:ことしは介護のボランティアを始めようと思っています。若いときから介護の仕事をやりたかったんです。ボランティアをしながら、勉強をして資格も取るつもりです。皆さん、応援よろしくお願いします。
+わたし・恵（17歳）:わたしはアジアの踊りに興味があります。特にインドネシアのバリの踊りが好きだから、将来はバリで踊りを研究したいと思っています。それで、ことしからインドネシア語の勉強を始めようと思っています。
+弟・龍男（10歳）:ことし5年生になるから、学校のスポーツクラブに入れます。僕は野球のクラブに入ろうと思っています。僕は足も速いし、上手に打てるから、すぐ試合に出られると思います。みんな見に来てください。それから去年は宿題をよく忘れたけど、ことしは忘れないつもりです。
+あなたは何年生まれ？
+昔、神様が動物たちに言った。「1月1日の朝、わたしのうちへ早く来たら、1番目から12番目のものに大切な仕事をあげよう。」ネコは神様の話がよく聞こえなかったから、ネズミに「いつ？」と聞いた。ネズミは「2日だ」とうそを言った。
+ウシが最初に神様のうちに着いたが、ウシの背中にはネズミがこっそり乗っていた。ドアが開いたときに、ネズミが飛び降りて、1番になった。そして2番から12番までの動物が決まった。神様が言った。「ことしはネズミの年だ。ネズミの仕事はことし生まれる人たちを守ることだ。来年はウシ年で、ウシの仕事は来年生まれる人たちを守ることだ。毎年順番に仕事をして、12番まで仕事をしたら、またネズミの年になる。」
+このときから毎年ネズミ年、ウシ年などと言う。ネコは遅れたから、仕事ももらえなかったし、ネコ年もない。それで、ネコはネズミを見ると、追いかける。今も怒っているのだ。
+沖縄旅行
+わたしはことしの3月に初めて沖縄へ行きました。
+沖縄は九州の南にあります。大阪から船で行きました。38時間かかりました。それから1週間旅行しました。毎日いい天気でしたが、少し暑かったです。
+いろいろな所へ行きました。那覇は沖縄でいちばん大きな町です。旅行者がとても多かったです。台湾や東南アジアの人もたくさんいました。店に珍しい物がたくさんありました。
+海はほんとうにすばらしかったです。珊瑚礁にきれいな魚がたくさんいました。
+時々沖縄のことばがわかりませんでしたが、人は親切でした。沖縄の料理はおいしかったです。それに沖縄の音楽もすてきでした。
+沖縄旅行はとても楽しかったです。わたしは沖縄が大好きです。
+桜とお花見
+日本人に「いちばん好きな花は何ですか」と聞いたら、多くの人が「桜」と答えるでしょう。春になって桜が咲くと、周りの景色がみんなピンク色になります。ほんとうにきれいです。そして、満開の桜は風が吹くと一斉に散ります。桜は散るときも、とってもきれいです。
+春には、たくさんの人が桜を見に行きます。お花見は1,200年ぐらいまえから続いている日本の春の大きいイベントです。桜が咲く時期は南から北へだんだん移ります。沖縄の桜がいちばん早くて、1月ごろ咲きます。北海道の桜は5月ごろ咲きます。ですから、お花見のシーズンになると、天気予報の中で、「上野公園の桜は来週金曜日ごろ満開になるでしょう。」とか、「弘前城の桜はもうすぐ咲くでしょう。」とか、桜の花が咲く日の予想を発表します。桜は1、2週間で散ってしまいますから、予想を聞いて、お花見の日を決めます。
+お花見では、家族や友達と、桜を見ながら食べたり飲んだり、歌ったり踊ったりします。絵をかいたり、写真を撮ったりする人もいます。バーベキューなどができる公演もあります。昼の桜もいいですが、夜の桜もとてもきれいです。でも、お花見のころの夜はちょっと寒いかもしれませんから、セーターなど暖かい服を持っていったほうがいいでしょう。
+日本には、桜の名所がたくさんあります。春になると、桜の名所も、町の公園も、朝から夜まで人でいっぱいです。お花見は、日本人が短い桜の季節を楽しむ大切なイベントなのです。
+宝くじ
+宝くじが当たりました。3億円です。信じられません。仕事をやめます。そして、いろいろな国へ遊びに行きたいです。うちや車が欲しいです。
+朝9時に銀行へ3億円をもらいに行きました。机の上に新しい一万円札が3万枚ありました。銀行員は機械で数えました。わたしは自分で数えたかったですから、手で数えました。1枚、2枚、3枚……とても疲れましたから、ちょっと休みました。銀行の隣のレストランへ食事に行きました。そして、また数えました。5時までかかりました。
+それから警官といっしょにうちへ帰りました。3万枚の一万円札はとても重かったです。3億円ありますから、警官に100万円あげました。「ありがとうございます。あなたはいい人ですね。あなたは……」
+「あなた、あなた、7時ですよ。」妻の声です。夢が終わりました。朝です。楽しい夢でした。今晩も同じ夢を見たいです。
+大声大会
+わたしの町では毎年12月に大声大会があります。大きい声で何か叫んで、1年の嫌なことを忘れるのです。
+去年のテーマは「あの人に言いたい」でした。ほとんどの人は「税金を下げろ！」とか「首相はやめろ！」とか叫びましたが、外国から参加したある女の人は「トーホク！ガンバロー！」と叫びました。この声が大会でいちばん大きい声でした。大きい地震があった東北の人に「元気を出して。いっしょに頑張りましょう」と言いたかったのです。
+ほかに、「山本！貸した金返せ！」「給料を上げろ！」「良子、結婚してくれ！」「社長！下手な英語を使うなー！」「幸子、かんにーん！」などがありました。「かんにん」は大阪弁で「すみません」という意味です。この人は何か幸子さんに謝りたいことがあるのでしょう。
+毎日の生活では大声で叫ぶチャンスがありません。1年に一度、大声で叫んで、1年のストレスを全部出してしまいましょう。
+ビデオレター
+マナさんからビデオレターをもらいました。マナさんは今大阪を旅行しています。
+洋子さん、こんにちは。お元気ですか。大阪はとても暑いです。
+今、心斎橋にいます。大阪でいちばんにぎやかな所です。橋の上で男の人がギターを弾いています。外国人もいます。音楽は世界のことばですね。
+新世界へ来ました。ここは有名な串カツ屋の前です。人がたくさん待っています。初めて串カツを食べました。熱かったですが、とてもおいしかったです。
+今通天閣から大阪の町を見ています。あれは大阪城です。
+大阪城公園です。広いです。子どもが遊んでいます。木の下で男の人が寝ています。女の人が犬と散歩しています。
+これから大阪城を見に行きます。
+じゃ、またビデオレターを送ります。
+こんな人にこのことば
+石川（25歳）禁煙？考えたことない。寝る前はベッドで吸うんだ。一度そのまま寝てしまって、布団が少し燃えたことがあるけど。
+南山（16歳）あ、あそこの信号、もうすぐ赤になる！早く渡ってしまおう。
+上田（27歳）シーツを買いました。袋を開けてから、わかったんですが、わたしのベッドでは使えないんです。店に返しに行ったけど、換えてもらえませんでした。
+田村（53歳）家族5人の生活だから、ごみは多いですよ。要らない物は捨てます。エアコンは1年中使っています。車が好きだから、どこでも車で行きます。
+高橋（42歳）おじいちゃん、最近何でも忘れるし、同じことを何回も聞くし、ほんとうに疲れます。それに、娘や息子はいくら言っても、部屋を片づけないし。
+みんなの伝言板
+A:ベトナム語を習いたいです。一週間に一回夜2時間ぐらい教えてください。電話を待っています。
+山本電話(988)0132
+B:うちのねこを見ませんでしたか。3歳の白いねこです。名前はミーです。
+2丁目小野951-4465
+C:いっしょに生け花をしませんか。
+月・木10：00～12：0018：00～20：00
+ゆっくり教えますから、初めての人も大丈夫です。見に来てください。
+スーパーのうしろABC3階ララ生け花教室
+TEL918-7855
+D:げんきなこいぬが5ひきいます。しろいのが3びきとくろいのが2ひきです。もらってください。
+たかはしでんわ989ー4431
+E:ベッドをあげます。
+取りに来てください。仕事は夜8時までですから、9時ごろ電話をかけてください。
+田中988ー2286
+F:いっしょにテニスをしませんか。毎週日曜日十時から三丁目さくら公園で。
+三丁目テニスクラブ
+あなたの国では？
+日本ではあいさつをするとき、頭を下げます。握手をしたり体を触ったるするあいさつはありません。また、日本人は「わたし」というとき、人差し指で自分の鼻を指します。
+手を使うジェスチャーはいろいろあります。人の前や間を歩くとき、手を立てて上げたり下げたりします。これは「ちょっとすみません」という意味です。また、手を顔の前で横に何回も振ります。これは「さようなら」のジェスチャーではありません。「わかりません」「できません」などの意味です。人や犬などを呼ぶとき、日本人は手のひらを下に向けて振ります。
+また、日本人は口の前に人差し指を立てて「シーッ」と言います。これは「話すな！」という意味です。みんなの前で話すときは、ポケットに手を入れて話してはいけません。また、日本人は相手の目をあまり見ないで話します。じっと見る失礼なのです。
+このほかに笑うとき、手で口を隠す女の人がいます。昔、女の人は他の人に歯を見せてはいけませんでした。それで今もその習慣のとおりにしているのです。
+日本では小さい子どもに「いい子だね」と言うとき、頭に触ります。しかし、タイなどの東南アジアの国では頭を触ってはいけません。旅行のガイドブックにはタイへ行ったら、人の頭に触るなと買いてあります。
+世界にはいろいろなジェスチャーがあります。
+高校
+日本では小学校と中学校の9年間は義務教育です。高校は義務教育ではありませんが、中学生の97％以上が高校へ行きます3年勉強します。高校生の50％ぐらいが大学へ行きます。
+私は去年高校を出ました。私の高校は制服がありません。髪型も自由です。クラブがたくさんあります。私はサッカーをしてしていました。アルバイトもしました。高校生活は楽しかったです。
+私の妹は今女の生徒だけの高校へ行っています。規則がたくさんあります。髪を染めてはいけません。ピアスや化粧をしてはいけません。
+隣のうちの人は定時制高校に行っています。昼はパン屋で働いていますから、夜勉強しています。だいたい午後5時半から9時半までです。4年勉強します。定時制高校にはいろいろな生徒がいます。髪型や化粧などの規則はありません。時々生徒より先生のほうが若いです。今定時制高校はとても少ないです。
+自動販売機
+日本は自動販売機が多い国だ。ボタンを押せば、簡単に飲み物やお菓子などいろいろな物が買える。今、日本では飲み物の販売機がいちばん多くて、257万台ある。2番目はプリペイドカードや靴下など生活用品を売る販売機で、86万台ある。3番目はたばこの販売機で、23万台ある。食べ物の販売機が7万台ぐらい、切符などの販売機が4万台ある。全部で377万台以上だ。
+いつでも使うことができるから、便利だが、問題もある。日本では20歳にならなければ、お酒を飲んだり、たばこを吸ったりすることはできない。しかし、夜はだれも見ていないから、子どもでも、販売機でたばこやお酒が買える。また、24時間動かすと、電気もむだになる。
+それで、お酒の販売機は夜11時から朝5時まで止めてある。たばこは「タスポ」というカードを機械にタッチしなければ、買えない。このカードは大人しか持てない。また、最近では、販売機のほとんどが節電タイプになっている。1991年から2013年までに、飲み物の販売機が使う電力は75％減った。
+しかし、販売機は町の美しさを壊すし、ごみが増えると言う人もいる。古くて静かな京都のお寺でも、門の前に販売機が置いてある。そばのごみ箱はいつでもごみでいっぱいだ。また、夜中に販売機の前に若い人が集まって、騒いだりする。便利な販売機だが、問題はまだある。
+創造の動物
+1.これは体がとても長くて、足が4本あります。水の中に住んでいます。雨や風の神様です。これはヨーロッパで悪い動物ですが、日本や中国でいい動物です。
+2.この動物は川に住んでいます。背が低くて、1メートルぐらいです。体は緑色です。頭の上に皿があります。日本にこの動物の名前の食べ物や店や町などがあります。
+3.日本とインドにいます。山の奥に住んでいます。顔が赤くて、鼻が高いです。いつも扇を持っています。
+4.ヨーロッパと中国と日本の海に住んでいます。体の半分は魚です。ヨーロッパは髪が長くて、若くて、きれいです。そして、歌が上手です。
+5.これはギリシャに住んでいます。体の上の半分は人で、下の半分は馬です。この動物は女の人が好きです。ギリシャ人はこの動物が嫌いです。
+江戸時代
+江戸時代は1603年から1898年までで、約260年ありました。この時代は色々な規則がありました。
+江戸時代に人は外国へ行ってはいけませんでした。そして、外国の船は日本に入ってはいけませんでした。長崎だけ入ってもよかったです。
+またキリスト教を信じてはいけませんでした。みんなお寺になお前を登録しなければなりませんでした。それから、牛肉と豚肉を食べてはいけませんでした。
+江戸時代は藩がありました、藩に大名がいました。大名は自分の藩と江戸にうちがありました。そして、藩に1年、江戸に1年、住まなければなりませんでした。奥さんと子どもは江戸に住んでいました。江戸まで歩いていかなければなりませんでしたから、とても大変でした。
+また江戸時代の長男はお父さんの仕事をしなければなりませんでした。
+いろいろ規則がありましたが、平和な時代でした。
+個人旅行？団体旅行？
+まゆみさんとはるかさんの趣味は外国を旅行することです。でも、旅行のし方が違います。2人の意見を聞いてください。
+個人旅行はるかさん
+自分でビザやパスポートを取りに行きます。
+スケジュールを自分で作って、好きなホテルを予約します。
+好きなところへ自由に行って、ゆっくり見ることができます。
+自分で荷物を持たなければなりませんが、すぐ次のところへ行くことができます。
+外国語の勉強がたくさんできます。外国人の友達を作ることだできます。
+団体旅行まゆみさん
+旅行に行くまえに、自分で何もしなくてもいいです。
+旅行会社の人がします。
+旅行会社の人はおもしろくて、有名なところをよく知っています。1日にたくさん見ることができます。
+重い荷物を持たなくてもいいです。旅行会社の人が集めて、持って行きます。
+外国語がわからなくてもいいです。日本語で説明を聞くことができます。
+ここはどこですか
+ここに入るまえに、お金を払わなければなりません。ここでは遠い国のいろんな人の生活を見ることができますでも、隣の人と話さないでください。くらいですから、寝てもいいですが、静かに寝てください。
+ここでは人がたくさん待っています。でも、元気な人は少ないです。ロビーでケータイを使ってもいいですが、部屋で使ってはいけません。ここに入るまえに、お金を払わなくてもいいですが、出るまえに払わなければなりません。時々とても高いです。
+ここに入るまえに、服を脱いでください。暖かくて、気持ちがいいですが、絶対に寝ないでください。時々泳ぐことができます。
+ここでは本を読むことや寝ることができますが、たばこを吸うことができません。大きい声で話してはいけません。危ないですから、窓から手や顔を出さないでくだしい。小さい子どもはお金を払わなくてもいいです。
+相撲
+相撲を見たことがありますか。相撲は日本の古いスポーツです。
+日本では1300年ぐらいまえから相撲をしていました。1年に1回7月に天皇の前で相撲をしました。
+800年ぐらいまえに、相撲は侍のスポーツになりました。侍は強くなりたかったですから、よく相撲の練習をしました。
+江戸時代に相撲はプロスポーツになりました。毎年2回たくさんの人が相撲を見に行きました。みんなゆっくり相撲を見ました。ごはんを食べたり、お茶を飲んだりしてもよかったです。有名な力士は落語や歌舞伎の主人公になりました。
+今相撲は1年に6回あります。東京で3回、それから大阪と名古屋と福岡です。
+相撲はおもしろいスポーツです。いろいろな力士がいます。体が大きい人や小さい人、モンゴルやロシアなどいろいろな国の人もいます。時々小さい力士が大きい力士に勝ちます。
+今外国のテレビで相撲を見ることができます。時々日本から外国へ力士が行って、相撲をします。
+伊能忠敬の一生
+1745年千葉で生まれた。
+頭が良くて、勉強が好きだった。
+1762年結婚して、奥さんのうちの名前を（伊能）になった。
+奥さんのうちは酒屋と米屋をしていた。
+忠敬が来てから、店はとても大きくなった。
+自分で測量の勉強をした。
+1782年「天明の大飢饉」
+お金を出して、村の人を助けた。
+1795年仕事をやめて、江戸へ行った。
+江戸で有名な先生に天文学を習った。
+1800〜1816年北海道を測量して、地図をかいた。
+日本中を歩いて測量した。
+1818年亡くなった。
+1821年日本の地図ができた。
+1995年「切手の人」になった。
+雨降って、地固まる
+［相談］去年結婚しました。妻は働いていますから、わたしも料理や掃除をしています。月曜日と木曜日はごみの日です。ごみはいつもわたしが捨てます。先週の月曜日の晩妻はごみを見て、「きょうごみの日だったけど。」と言いました。「僕は『きょうは急ぐから、君、捨てて。』と言ったよ。」「いいえ、言わなかった。わたしは聞かなかった。」「言った。」「言わなかった。」どちらも自分が正しいと思いました。妻はそれからわたしと話しません。わたしの顔も見ません。わたしは妻と仲直りしたいです。中川先生、アドバイスをお願いします。（会社員28歳）
+［回答］まず花を買って、帰ってください。そして、あなたから「ごめんね。」と言ってください。奥さんもきっとあなたと仲直りしたいと思っていますよ。結婚生活は楽しいことだけではありません。時々けんかになります。顔を見たくないと思ったり、話したくないと思ったりします。でも、あなたは奥さんといっしょにいたいでしょう？奥さんも同じだと思いますよ。夫婦はけんかして、仲直りして、またけんかして、仲直りして、だんだんいい夫婦になります。「雨降って、地固まる」と言いますね。（中川花子）
+結婚!!??
+結婚アンケート
+1.結婚したいと思いますか。
+①結婚したい②結婚したくない
+2.どうしてそう思いますか。
+①の人
+a.好きな人といつもいっしょにいたいから
+b.自分の家族を持ちたいから
+c.一人の生活は寂しいから
+d.その他（）
+②の人
+a.独身のほうが自由だから
+b.生活が大変だから
+c.会社で働いて、うちの仕事もしなければならないから
+d.その他（）
+①の人に聞きます
+3.結婚は何歳ぐらいがいいと思いますか。
+（）歳ぐらい
+4.結婚相手の条件は何が大切だと思いますか。
+①性格②年齢③趣味④顔⑤学歴⑥仕事⑦お金
+5.子どもが欲しいですか。
+①欲しい→何人ぐらい欲しいですか。
+a.1人b.2人c.3人d.たくさん
+②欲しくない
+結婚は大変？
+◎初めて会ってから、結婚まで
+・どこでどうやって会いましたか。
+会社、仕事…29.3%友達・兄弟・姉妹の紹介…29.7%学校…11.9%
+・何歳で結婚しましたか。
+男の人:29.8歳女の人:28.5歳
+結婚まで何年かかりましたか。
+4.26年
+◎独身・結婚・離婚
+・何%結婚していませんか。
+テレビ放送
+日本で初めてテレビ放送をした日は1953年2月1日です。そのとき東京にあったテレビは1,200〜1,500台でした。サラリーマンの1ヶ月の給料は1万1,500円ぐらいでしたが、テレビは20万円ぐらいでした。ですから、たくさんの人が駅の前やデパートや公園にあるテレビを見ました。
+テレビを初めて見た人はびっくりして、「このラジオは見ることができる。」と言いました。テレビの中に人がいると思った人もたくさんいました。放送は1日に4時間だけでした。
+1959年4月に皇太子の結婚式がありました。結婚式を見たい人はテレビを買いました。日本のテレビは4月に200万台になりました。
+1964年10月にアジアで初めてのオリンピックが東京でありました。たくさんの人がカラーテレビを買いました。
+今は1人でパソコンやケータイでテレビ番組を見たり、おふろでテレビを見たりすることができます。見たい番組を見たい時間に見ることもできます。
+これからテレビはどうなると思いますか。
+東京スカイツリーと法隆寺五重塔
+東京スカイツリーは2012年にできました。今世界でいちばん高い電波塔で、634メートルです。350メートルと450メートルの高さにある展望台から東京の町や富士山を見ることができます。
+奈良の法隆寺は世界でいちばん古い木の建物で、五重塔は地震や風にとても強いです。ですから、東京スカイツリーは五重塔の構造を参考に作りました。
+コーヒーを飲むと
+コーヒーは今から200年ぐらいまえに、オランダ人が日本へ持って来ました。明治時代の初めまでコーヒーを飲む人は少なかったですが、今日本人は1年に1人560杯ぐらいコーヒーを飲みます。
+ところで、コーヒーは体に悪いと思っているひとはいませんか。実はコーヒーはいろいろいい働きがあります。
+まず疲れたとき、眠いけど、仕事や勉強をしなければならないとき、コーヒーを飲むと、元気になります。頭の働きがよくなります。日本の大学でコーヒーの働きについて調べてことがあります。トラックの運転手が長い時間車を運転してから、簡単な計算をしました。眠かったですから、まちがいがたくさんありました。コーヒーを飲んでから、もう一度計算をしました。まちがいは少なくなりました。
+次にコーヒーを飲むと、リラックスすることができます。ですからわたしたちは喫茶店で友達と話すとき、仕事が終わって少し休むとき、よくコーヒーを飲みます。
+また熱いコーヒーを飲むと、体が温かくなります。コーヒー1杯は2分のジョギングと同じ働きをします。
+皆さん、ちょっと休んで、コーヒーでも飲みませんか。
+インスタントコーヒーは日本人が発明した！
+インスタントコーヒーを初めて作った人は日本人です。シカゴに住んでいた加藤サトリは「粉末コーヒー」を作って、1901年に発表しました。しかし、この粉末コーヒーはあまり有名になりませんでした。1938年にスイスのコーヒー会社が加藤サトリが発明した方法をいろいろ研究して、今のインスタントコーヒーを作りました。
+日本語でお願いします。
+わたしはアランです。大阪に住んでいるフランス人です。日本人の友達や会社の人、近所の人といつも日本語で話します。
+でも、デパートやレストランで店の人はわたしを見ると、英語で話します。わたしは日本語で質問しますが、店の人は英語で答えます。時々店の人が話す英語がわかりませんから、「ちょっとわかりません。」と日本語で言うと、英語で一生懸命話してくれます。
+この間図書館へ行く道がわかりませんでしたから、駅の前で日本人の男の人に日本語で聞きました。男の人は「だめ、だめ。」と言いました。
+今度は女の人に聞きました。女の人は「図書館、えーと、ライブラリー？」と言いました。それから一生懸命英語で説明してくれました。長い時間がかかりました。わたしは「ありがとうございました。」と日本語で言いました。それから教えてもらった道を行きましたが、図書館はありませんでした。
+日本人の皆さん、日本語でお願いします。
+それ、英語？
+かたかなのことばは英語から来たことばが多いです。日本で作ったかたかなのことばもたくさんありますが、英語ではありません。ですから、英語がわかる外国人も意味がわかりません。
+あなたは下のかたかなのことばがわかりますか。
+1.ガソリンを入れたいです。近くにガソリンスタンドがありますか。
+2.日本の車はハンドルが右にあります。
+3.この荷物は重いですから、荷物をコインロッカーに入れてから、買い物しましょう。
+4.「テレビもリモコンは？」……「そのいすの上にありますよ。」
+5.誕生日に父にオートバイを買ってもらいました。16歳になりましたから、乗ることができます。
+6.「この部屋にコンセントがありますか。」……「ええ、あのソファの右にありますよ。」
+将来は…
+山本君、川田君、佐藤君は同じ高校を出ました。そして、今……。
+〈山本一郎〉僕は今小さい引っ越しの会社で働いています。友達はみんな大学へ行きましたが、僕は大学で勉強したいことが見つかりませんでした。大学へ行っても、意味がないと思いました。働いて、自分のお金で好きなことをしたいです。どこか外国へ行きたいです。いろいろ経験したら、ほんとうにしたいことが見つかると思います。
+〈川田悟〉富士大学で経済を勉強しています。ほんとうは経済の勉強より音楽のほうが好きだから、ミュージシャンになりたいけど……。でも、両親が将来を考えたら、大学を出なければならないと言いました。僕もいくら好きなことをしても、安定した生活ができなかったら、幸せになることはできないと思います。
+〈佐藤健〉高校を出るとき、両親とけんかをしました。僕は劇団に入って、好きな演劇をすると言いました。両親は大学へ行かなければならない、演劇で生活することはできない、将来きっと後悔すると言いました。
+僕はうちを出て、今1人生活しています。親からお金をもらっていません。生活は苦しいです。でも、したいことがありますから、苦しくても、頑張ります。
+    </textarea>
+  </div>
+  <div id="prepro_status"></div>
+
+  <div class="hh">制御 オプション:</div>
+  <button id="learn" class="abutton">学習/再スタート</button>
+  <button id="resume" class="abutton">再開</button>
+  <button id="stop" class="abutton">一時停止</button>
+  <!-- <button id="gradcheck">gradcheck</button> -->
+  <textarea id="newnet" style="width:100%; height:200px;">
+
+// モデルのパラメータ
+generator = 'lstm'; // 'rnn' か 'lstm' のどちらかが可能です
+hidden_sizes = [20,20]; // 中間層のニューロン数のリスト
+letter_size = 5; // 文字埋め込み層のサイズ
+
+// 最適化のためのパラメータ
+regc = 0.000001; // L2 正則化項の値
+learning_rate = 0.01; // 学習係数
+clipval = 5.0; // 勾配クリップの値 勾配爆発を避けるため
+  </textarea><br />
+  パープレキシティが爆発して大きくなるようであれば，学習率を小さくしてみてください <!--if your perplexity is exploding with Infinity try lowering the initial learning rate-->
+  <br>
+  <div id="status">
+
+    <div>
+      <div class="hh">訓練時の情報:</div>
+      <div class="aslider">
+        <div class="slider_header">学習率: 徐々に緩める必要があるかも知れません<!--Learning rate: you want to anneal this over time if you're training for longer time.--></div>
+        <div class="theslider" id="lr_slider"></div>
+        <div class="slider_value" id="lr_text"></div>
+      </div>
+
+      <canvas id="pplgraph"></canvas>
+      <div id="ticktime"></div>
+      <div id="gradclip"></div>
+      <div id="epoch"></div>
+      <div id="ppl"></div>
+
+      <div style="clear:both;"></div>
+    </div>
+
+    <div class="hh">出力のサンプル:</div>
+    <div id="controls">
+      <div class="aslider">
+        <div class="slider_header"><!-- Softmax sample temperature: lower setting will generate more likely predictions, but you'll see more of the same common words again and again. Higher setting will generate less frequent words but you might see more spelling errors. -->Softmax 温度: 低めの温度に設定にすると それらしい予測単語 が が 生成 されます。 その場合には， おそらく 同じ高頻度語 が数多く出力されることになります。高めの温度に設定にすると 低頻度語語 は 出てこなくなります。ですが 非単語が多く出現します。</div>
+        <div class="theslider" id="temperature_slider"></div>
+        <div class="slider_value" id="temperature_text"></div>
+      </div>
+    </div>
+    <div id="samples"></div>
+    <div class="hh">最大値を与える値を貪欲探索した出力結果:</div>
+    <div id="argmax"></div>
+  </div>
+  <div id="io">
+    <div class="hh">モデルの保存と読み込み (JSON ファイル)</div>
+
+    <button id="savemodel" class="abutton">モデルの学習結果を保存</button>
+    <button id="loadmodel" class="abutton">学習したモデルパラメータの読み込み</button>
+    <div>
+      下のテキスト領域により，学習させたモデルのパラメータを JSON ファイルとして書き出したり，読み込んだりできます。
+    </div>
+    <textarea style="width:100%; height:200px;" id="tio"></textarea>
+
+    <br>
+    <div class="hh">訓練済モデル:</div>
+    <!-- You can also choose to load an example pretrained model with the button below to see what the predictions look like in later stages. The pretrained model is an LSTM with one layer of 100 units, trained for ~10 hours. After clicking button below you should see the perplexity plummet to about 3.0, and see the predictions become better. -->下のボタンで学習済みモデルを読み込んで 学習後期の段階 で 予測がどのように見えるかを確認することができます。
+    訓練済モデルは 1 層 100 台 の LSTM で 10時間訓練されています。
+    下のボタンをクリックした後、約 3.0 にパープレキシティの急落を見るべきであり 予測がより良いものになるのを参照してください。<br>
+    <button id="loadpretrained" class="abutton">load pretrained</button>
+
+  </div>
+</div>
+
+</body>
+</html>
