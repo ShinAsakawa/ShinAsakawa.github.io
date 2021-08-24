@@ -1,11 +1,39 @@
 body {
-   font-family: Helvetica, arial, sans-serif;
-   font-size: 14px;
-   line-height: 1.6;
-   padding-top: 10px;
-   padding-bottom: 10px;
-   background-color: white;
-   padding: 30px; }
+  /* font-family: Helvetica, arial, sans-serif; */
+  /*
+sans-serif	ゴシック体	メイリオ、ヒラギノ角ゴシック、Arial
+serif	明朝体	MS P明朝、ヒラギノ明朝、Times
+system-ui	OSのUIと同じフォント	Yu Gothic UI、Meiryo、ヒラギノ角ゴシック、San Francisco
+monospace	等幅フォント	MSゴシック、MS明朝、Osaka-Mono
+cursive	筆記体	Comic Sans MS、Scriptなど
+fantasy	装飾系フォント	alba、Chickなど
+  font-family: sans-serif, "Noto Sans Japanese";
+  font-family: Times, "Noto Sans Japanese";
+
+日本語フォント名を欧文フォント名より先に指定してしまうと、
+すべてのテキストが日本語フォントで表示されてしまいますので注意
+font-familyには、各OS表示用の複数のフォント名を指定しておくことが推奨されている。
+フォントファミリー名は、日本語フォント・欧文フォント、またフォント名にスペースを含む・含まずを問わず、ダブルクォーテーション（”）、またはシングルクォーテーション（’）の引用符で囲うことが推奨されています。
+  font-family: Times, "ヒラギノ角ゴ PronN";
+  font-family: "MS PMincho";
+  font-family: 'Hiragino Kaku Gothic ProN'
+  font-family: Times, "Hiragino Mincho ProN";
+  font-family: Times, "ヒラギノ明朝 ProN";
+  font-family: Arial, 'Noto Sans JP';
+  font-family: sans-serif, 'Noto Sans Japanese';
+  */
+  font-family: Arial, 'Noto Sans Japanese';
+  font-size: 14px;
+  /*font-size: 20px;*/
+  line-height: 1.6;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  background-color: white;
+  padding: 30px; 
+  background-color: white;
+  background-color: #ffffcc;
+  background-color: #fafaf0;
+}
 
 body > *:first-child {
    margin-top: 0 !important; }
@@ -61,7 +89,7 @@ h1 {
    color: black; }
 
 h2 {
-   font-size: 20px;
+   font-size: 29px;
    color: black; }
 
 h3 {
@@ -300,4 +328,26 @@ MathJax.Hub.Config({
     inlineMath: [['$','$'], ['\\(','\\)']],
     processEscapes: true
   }
-});
+    });
+
+MathJax.Hub.Config({
+  tex2jax: {
+    inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+    displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+  },
+  TeX: {
+    equationNumbers: {
+      autoNumber: "all"
+    },
+    Macros: {
+      R: '{\\mathbb R}',
+      C: '{\\mathbb C}',
+      np: ['{#1}#2{#1}', 2],
+      of: ['\\left({#1}\\right)', 1],
+      Given: ['\\left|#1\\right.', 1],
+      KL: ['\\text{KL}\\left(\\left.{#1}\\right\|{#2}\\right)', 2],
+    }
+  }
+    });
+
+
