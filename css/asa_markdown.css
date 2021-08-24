@@ -24,7 +24,7 @@ font-familyには、各OS表示用の複数のフォント名を指定してお�
   */
   font-family: Arial, 'Noto Sans Japanese';
   font-size: 14px;
-  /*font-size: 20px;*/
+  font-size: 20px;
   line-height: 1.6;
   padding-top: 10px;
   padding-bottom: 10px;
