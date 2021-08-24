@@ -34,7 +34,7 @@ font-familyには、各OS表示用の複数のフォント名を指定してお�
   background-color: #ffffcc;
   background-color: #fafaf0;
   margin:auto;
-  max-width:42em;
+  width:720px;
 }
 
 body > *:first-child {
