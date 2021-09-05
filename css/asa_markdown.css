@@ -36,6 +36,7 @@ font-family には、各 OS 表示用の複数のフォント名を指定して�
   background-color: #ffffcc;
 */
   background-color: #fafaf0;
+  max-width: 77%;
 }
 
 body > *:first-child {
@@ -87,13 +88,17 @@ h6 tt, h6 code {
    font-size: inherit; }
 
 h1 {
+   border-top: 4px solid #CCCCCC;
    font-size: 28px;
    border-bottom: 4px solid #cccccc;
-   color: black; }
+   color: black; 
+}
 
 h2 {
+   border-bottom: 1px solid #CCCCCC;
    font-size: 24px;
-   color: black; }
+   color: black; 
+}
 
 h3 {
    font-size: 18px; }
