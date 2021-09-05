@@ -24,7 +24,7 @@ font-family には、各 OS 表示用の複数のフォント名を指定して�
   font-family: sans-serif, 'Noto Sans CJK JP';
   font-family: Times, 'Noto Serif Japanese';
   */
-  font-family: Times, sans-serif, "Noto Sans Japanese";
+  font-family: sans-serif, "Noto Sans Japanese";
   font-size: 14px;
   /*font-size: 20px;*/
   line-height: 1.6;
