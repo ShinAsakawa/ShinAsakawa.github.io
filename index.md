@@ -3,6 +3,9 @@ title: Shin Asakawa's GitHub.io
 layout: default
 ---
 
+## 2022_0112 
+- [Huggingface transfomres notebooks 日本語訳](2022_0112huggingface_transformers){:target="_blank"}
+
 ## 2021_0502「みんなの日本語関係」関係資料
 
 - [みんなの日本語データ作成](https://colab.research.google.com/github/ShinAsakawa/ShinAsakawa.github.io/blob/master/notebooks/2021_0502Minnichi_data.ipynb){:target="_blank"}
