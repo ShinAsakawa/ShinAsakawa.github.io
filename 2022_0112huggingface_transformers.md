@@ -28,8 +28,8 @@ layout: default
 #### PyTorch notebooks:
 
 * **トークン化器の訓練** 自作トークン化器を用いた訓練方法 [`tokenizer_training.ipynb` Open In Colab](https://colab.research.google.com/github/huggingface/notebooks/blob/master/examples/tokenizer_training.ipynb)
-* **自作言語モデルの訓練** トランスフォーマを簡単に使い始める方法 [`language_modeling_from_scratch.ipynb` Open In Colab](https://colab.research.google.com/github/ShinAsakawa/ShinAsakawa.github.io/blob/master/2022notebooks/2022_0112Train_a_language_model.ipynb)，[オリジナル](https://colab.research.google.com/github/huggingface/notebooks/blob/master/examples/language_modeling_from_scratch.ipynb)
-
+* **自作言語モデルの訓練** トランスフォーマを簡単に使い始める方法 [言語モデルの訓練 train a language model <img src="assets/colab_icon.svg">](https://colab.research.google.com/github/ShinAsakawa/ShinAsakawa.github.io/blob/master/2022notebooks/2022_0112Train_a_language_model.ipynb)
+[オリジナル `language_modeling_from_scratch.ipynb` Open In Colab](https://colab.research.google.com/github/ShinAsakawa/ShinAsakawa.github.io/blob/master/2022notebooks/2022_0112Train_a_language_model.ipynb)，[オリジナル](https://colab.research.google.com/github/huggingface/notebooks/blob/master/examples/language_modeling_from_scratch.ipynb)
 
 * **文書分類課題における微調整の方法** データを前処理し，全 GLUE 課題で事前訓練済モデルを微調整する方法を紹介 [`text_classification.ipynb` Open in Colab](https://colab.research.google.com/github/huggingface/notebooks/blob/master/examples/text_classification.ipynb)
 * **言語モデルの微調整方法** データを前処理し，因果関係のある，またはマスク化言語モデル課題で事前訓練済モデルを微調整する方法 [`language_modeling.ipynb` Open in Colab](https://colab.research.google.com/github/huggingface/notebooks/blob/master/examples/language_modeling.ipynb)
