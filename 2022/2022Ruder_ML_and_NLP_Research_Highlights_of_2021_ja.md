@@ -1,6 +1,5 @@
 ---
-original: 
-author: [Sebastian Ruder](https://ruder.io)
+author: Sebastian Ruder
 date: 2022_0124
 layout: default
 ---
@@ -746,7 +745,7 @@ Meta-learning can also help improve prompting by learning how to design or use p
 
 学術的な文献や書籍に引用する場合には，この著作物を以下のように引用して欲しい:
 <!-- For attribution in academic contexts or books, please cite this work as: -->
-    Sebastian Ruder, "ML and NLP Research Highlights of 2021". http://ruder.io/ml-highlights-2021/, 2022.
+    Sebastian Ruder, "ML and NLP Research Highlights of 2021". <http://ruder.io/ml-highlights-2021/>, 2022.
 
 BibTeX 用書誌情報:
 <!-- BibTeX citation: -->
