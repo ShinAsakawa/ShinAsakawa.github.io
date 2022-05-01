@@ -17,7 +17,7 @@ layout: post
 - [Byte Pair Encoding (wikipedia)](2022wikipedia_BPE_ja.md) sentenceバイト対符号化。
 - [文字戦争 (Char Wars)](2022char_wars_ja) 文字か単語かの論争についてのエッセイ
 <!-- - [](2021Snell_clip-art_ja) -->
-- [宇宙人の夢: アートシーンの出現 (プロンプトの例 CLIP による絵画生成)](2021Snell_clip_art_ja_)
+- [宇宙人の夢: アートシーンの出現 (プロンプトの例 CLIP による絵画生成)](2021Snell_clip-art_ja_)
 
 
 ---
