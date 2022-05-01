@@ -4,7 +4,9 @@ author: 浅川伸一
 layout: post
 ---
 
-### 目次
+## 目次
+
+### 2022_0501
 
 - [機械学習 ML と自然言語処理 NLP 研究 2021 年ハイライト ](2022Ruder_ML_and_NLP_Research_Highlights_of_2021_ja) 4月20日に Slack にてお送りした文の全訳になります。
 - [連続空間からのテキスト生成](2016Bowman_LM_VAE_ja) 変分自己符号化器モデル (VAE) を用いて文生成を行うモデルの提案
@@ -15,6 +17,11 @@ layout: post
 - [Byte Pair Encoding (wikipedia)](2022wikipedia_BPE_ja.md) sentenceバイト対符号化。
 - [文字戦争 (Char Wars)](2022char_wars_ja) 文字か単語かの論争についてのエッセイ
 <!-- - [](2021Snell_clip-art_ja) -->
+- [宇宙人の夢: アートシーンの出現 (プロンプトの例 CLIP による絵画生成)](2021Snell_clip_art_ja_)
+
+
+---
+
 
 <center>
 <img src="figures/2019Radford_GPT_fig1right.jpg" width="88%"><br/>
@@ -49,6 +56,11 @@ It also provides a standard testbed for the methods included in our empirical su
 “T5” refers to our model, which we dub the “Text-to-Text Transfer Transformer”.-->
 <!-- Raffel ら (2019) Fig. 1 より -->
 </div></center>
+
+### 2022_0410
+
+- [Unicode 正規化など雑多な話 <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"
+ />](https://colab.research.google.com/github/ShinAsakawa/ShinAsakawa.github.io/blob/master/2022notebooks/2022_0410iwa_yoshi_presentation.ipynb)
 
 
 
