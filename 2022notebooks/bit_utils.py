@@ -55,4 +55,45 @@ def plot_img_bbox(img:PIL.Image,
         
     if title != None:
         ax.set_title(title)
-    plt.show()        
+    plt.show()
+    
+    
+def _plot_img_bbox(img:PIL.Image,
+                  target:dict,
+                  title:str=None,
+                  edgecolor:str="red",
+                  linewidth:int=4,
+                  figsize:tuple=(7,7),
+                  verbose=False,
+                  ):
+
+    """画像中のバウンディングボックスを可視化する関数"""
+    # バウンディングボックスは以下のように定義されます: x-min y-min 幅 高さ
+    # Bounding boxes are defined as follows: x-min y-min width height
+
+    print(target) if verbose else None
+
+    fig, ax = plt.subplots(1,1)
+    fig.set_size_inches(figsize)
+    ax.imshow(img)
+
+    for box in target['boxes']:
+        x, y, width, height  = box[0], box[1], box[2]-box[0], box[3]-box[1]
+        rect = patches.Rectangle(
+            (x, y),
+            width,
+            height,
+            linewidth = linewidth,
+            edgecolor = edgecolor,
+            facecolor = 'none')
+
+        # 画像上にバウンディングボックスを描画
+        # Draw the bounding box on top of the image
+        ax.add_patch(rect)
+
+    if title != None:
+        ax.set_title(title)
+    #if verbose:
+    plt.show()
+
+    return img, ax    
