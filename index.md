@@ -3,7 +3,9 @@ title: Shin Asakawa's GitHub.io
 layout: default
 ---
 
-## 2022_0112 
+## [2025年02月28日 九州大学，理化学研究所](2025Kyushu){:target="_blank"}
+
+## 2022_0112
 - [Huggingface transfomres notebooks 日本語訳](2022_0112huggingface_transformers){:target="_blank"}
 
 ## 2021_0502「みんなの日本語関係」関係資料
@@ -31,7 +33,7 @@ Dijkstra and Van Heuven (2002) Fig. 1 を改変
 2. [2020年2月24日資料1 tlpa 画像](https://ShinAsakawa.github.io/2020making_tlpa.html)
 3. [2020年4月15日かじゅまるつがる松本先生のモデルの説明](https://shinasakawa.github.io/2020gajumarutugaru/2020-0415Friston_in_detail.html)
 4. [2020年4月18日かじゅまるつがる投稿](https://shinasakawa.github.io/2020gajumarutugaru/2020-0418gajumarutugaru.html)
-   
+
 ---
 <br/>
 
