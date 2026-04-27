@@ -199,19 +199,20 @@ def _compute_pns(mora_tuple, idx):
 
 # ╔═══════════════════════════════════════════════════════════╗
 # ║  3b. セグメントレベル PNS（訓令式ローマ字）                     ║
-# ║      jamorasep.parse(output_format='kunrei', phoneme=True) ║
+# ║      jamorasep.parse(output_format='kunrei', phoneme=False) ║
 # ╚═══════════════════════════════════════════════════════════╝
 
 def _reading_to_segments(reading: str) -> tuple:
-    """ひらがな/カタカナ読みを訓令式セグメント列に変換する。
+    """ひらがな/カタカナ読みを訓令式モーラ列に変換する。
 
-    例: 'かき' → ('k','a','k','i'), 'しゃんぷう' → ('s','y','a','n','p','u',':')
+    例: 'かき' → ('ka','ki'), 'がっこう' → ('ga','k','ko','u')
+    モーラ単位の訓令式表記を保持し、CV構造を維持する。
     jamorasep が利用できない場合は空 tuple を返す。
     """
     if not _has_jamorasep or not isinstance(reading, str) or len(reading) == 0:
         return ()
     try:
-        segs = _jamorasep.parse(reading, output_format='kunrei', phoneme=True)
+        segs = _jamorasep.parse(reading, output_format='kunrei', phoneme=False)
         return tuple(segs)
     except Exception:
         return ()
@@ -750,7 +751,7 @@ class WordMetrics(NamedTuple):
     n_morae: int            # モーラ数
     ons: int                # Orthographic Neighborhood Size
     pns: int                # Phonological Neighborhood Size（モーラレベル）
-    pns_segment: int        # Phonological Neighborhood Size（セグメントレベル、訓令式）
+    pns_segment: int        # Phonological Neighborhood Size（訓令式モーラレベル）
     old20: float            # Orthographic Levenshtein Distance 20
     pld20: float            # Phonological Levenshtein Distance 20（セグメントレベル）
     summed_neighbor_freq: int  # 書記的隣接語の頻度総和
@@ -809,23 +810,34 @@ class PsychoLingEngine:
             raise ValueError("wlsp_path と pairs は排他。どちらか一方のみ指定。")
 
         if wlsp_path is None and pairs is None:
-            # デフォルト: psylex71.txt → WLSP フォールバック
+            # デフォルト: psylex71.txt → bunruidb.txt → ダウンロード
             import os
             if os.path.exists('psylex71.txt'):
                 print("psylex71.txt を検出。母集団として使用します。")
                 pairs, freq_weights = load_psylex71('psylex71.txt')
                 if corpus_name is None:
                     corpus_name = 'psylex71'
-            elif os.path.exists('bunruidb.txt'):
-                print("psylex71.txt が見つかりません。WLSP にフォールバックします。")
+            else:
+                if not os.path.exists('bunruidb.txt'):
+                    print("psylex71.txt, bunruidb.txt が見つかりません。"
+                          "bunruidb.txt をダウンロードします...")
+                    import urllib.request
+                    _WLSP_URL = ("https://raw.githubusercontent.com/"
+                                 "masayu-a/WLSP/master/bunruidb.txt")
+                    try:
+                        urllib.request.urlretrieve(_WLSP_URL, 'bunruidb.txt')
+                        print("ダウンロードが正常に完了しました。")
+                    except Exception as e:
+                        raise RuntimeError(
+                            f"bunruidb.txt のダウンロードに失敗しました: {e}\n"
+                            "wlsp_path または pairs を明示的に指定してください。"
+                        ) from e
+                else:
+                    print("psylex71.txt が見つかりません。"
+                          "WLSP にフォールバックします。")
                 wlsp_path = 'bunruidb.txt'
                 if corpus_name is None:
                     corpus_name = 'WLSP'
-            else:
-                raise FileNotFoundError(
-                    "psylex71.txt も bunruidb.txt もカレントディレクトリに"
-                    "見つかりません。wlsp_path または pairs を明示的に指定"
-                    "してください。")
 
         if corpus_name is None:
             corpus_name = 'custom'
